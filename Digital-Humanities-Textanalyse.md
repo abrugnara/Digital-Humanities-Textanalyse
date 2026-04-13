@@ -1,6 +1,6 @@
 # DH TextAnalysis Framework
 
-Ein Jupyter-Notebook-Framework für die quantitative Textanalyse in den Digital Humanities. Entwickelt für den Einsatz in eigenen Forschungsprojekte – läuft auf Desktop und Laptop ohne manuelle Pfadanpassung.
+Ein Jupyter-Notebook-Framework für die quantitative Textanalyse in den Digital Humanities. Entwickelt für den Einsatz in Lehrveranstaltungen und eigene Forschungsprojekte – läuft auf Desktop und Laptop ohne manuelle Pfadanpassung.
 
 ---
 
@@ -14,7 +14,7 @@ Ein Jupyter-Notebook-Framework für die quantitative Textanalyse in den Digital 
 6. [Outputs & Dateien](#6-outputs--dateien)
 7. [Backup & Archiv](#7-backup--archiv)
 8. [Nummerierungsschema](#8-nummerierungsschema)
-9. [Konkordanzliste Alt → Neu](#9-konkordanzliste-alt--neu nur zur Dokumentation der Enwicklung ohne Relevanz)
+9. [Konkordanzliste Alt → Neu](#9-konkordanzliste-alt--neu)
 10. [Bekannte Einschränkungen](#10-bekannte-einschränkungen)
 11. [Lizenz](#11-lizenz)
 
@@ -39,7 +39,8 @@ pip install jupyterlab
 Alle benötigten Pakete werden beim ersten Ausführen von **Zelle 100** automatisch installiert, sofern sie fehlen. Für eine manuelle Installation:
 
 ```bash
-pip install nltk pandas matplotlib wordcloud nbformat numpy seaborn
+pip install nltk pandas matplotlib wordcloud nbformat numpy seaborn spacy
+python -m spacy download de_core_news_sm
 ```
 
 Nach der Installation müssen die NLTK-Sprachressourcen einmalig heruntergeladen werden. Auch das übernimmt Zelle 100 automatisch. Manuell:
@@ -59,6 +60,8 @@ wordcloud>=1.9
 nbformat>=5.9
 numpy>=1.24
 seaborn>=0.12
+spacy>=3.7
+# Sprachmodell separat: python -m spacy download de_core_news_sm
 ```
 
 ---
@@ -140,8 +143,9 @@ Muss immer zuerst ausgeführt werden. Kein manueller Eingriff nötig.
 | **310** | Basis-Reinigung (Demo-Text) | optional |
 | **320** | Tokenisierung | MUST |
 | **330** | Bilinguale Stopwort-Reinigung (DE + EN) | MUST |
+| **340** | Lemmatisierung via spaCy | optional |
 
-**Was passiert hier:** Zelle 320 zerlegt den Rohtext mit einem regulären Ausdruck in eine Wortliste (`wort_liste`). Zelle 330 bereinigt diese Liste um deutsche und englische Stoppwörter (via NLTK) sowie projektspezifische Zusatz-Stoppwörter und erzeugt die `saubere_liste`, die Grundlage aller weiteren Analysen ist. Zelle 310 ist eine reine Lehrzelle und hat keinen Einfluss auf die echte Analyse.
+**Was passiert hier:** Zelle 320 zerlegt den Rohtext mit einem regulären Ausdruck in eine Wortliste (`wort_liste`). Zelle 330 bereinigt diese Liste um deutsche und englische Stoppwörter (via NLTK) sowie projektspezifische Zusatz-Stoppwörter und erzeugt die `saubere_liste`. Zelle 340 reduziert alle Wortformen auf ihre Grundform (Lemma): `glänzte`, `glänzend`, `Glänzen` → `glänzen`. Das erhöht die Präzision von Häufigkeits- und Motiv-Analysen erheblich. Nach der Lemmatisierung steht `lemma_liste` zur Verfügung, die in allen Analyse-Zellen alternativ zu `saubere_liste` verwendet werden kann. Zelle 310 ist eine reine Lehrzelle ohne Einfluss auf die Analyse.
 
 ---
 
@@ -150,11 +154,13 @@ Muss immer zuerst ausgeführt werden. Kein manueller Eingriff nötig.
 | Zelle | Bezeichnung | Pflicht |
 |---|---|---|
 | **410** | Top-20-Wörter (Häufigkeitsplot) | empfohlen |
+| **415** | Type-Token-Ratio (TTR) – Lexikalische Diversität | optional |
+| **416** | Zipf-Kurve (Qualitätscheck Textbereinigung) | optional |
 | **420** | WordCloud generieren & speichern | empfohlen |
 | **430** | Test-Check: Wildcard-Treffer | optional |
 | **435** | Test: Kommt mein Wort vor? | optional |
 
-**Was passiert hier:** Erste Sichtung des bereinigten Textes. Beide Visualisierungen (Top-20-Balkendiagramm und WordCloud) werden automatisch als hochauflösende `.png`-Dateien in `02_Output/` gespeichert. Die Test-Zellen 430 und 435 erlauben schnelle manuelle Stichproben zu einzelnen Wörtern.
+**Was passiert hier:** Erste Sichtung des bereinigten Textes. Zelle 410 zeigt die häufigsten Wörter als Balkendiagramm. Zelle 415 berechnet die **Type-Token-Ratio (TTR)**: das Verhältnis einzigartiger Wörter zur Gesamtwortzahl – ein Maß für lexikalische Diversität. Zusätzlich wird der MATTR (Moving Average TTR) berechnet, der im Gegensatz zum klassischen TTR unabhängig von der Textlänge ist. Zelle 416 zeigt die **Zipf-Kurve**: Auf einer doppelt-logarithmischen Achse sollte die Häufigkeitsverteilung eine Gerade ergeben. Abweichungen am linken Rand deuten auf verbliebene Stoppwörter hin, Abweichungen am rechten Rand auf OCR-Fehler oder Eigennamen. Beide Zellen speichern ihre Grafiken automatisch in `02_Output/`.
 
 ---
 
@@ -163,6 +169,7 @@ Muss immer zuerst ausgeführt werden. Kein manueller Eingriff nötig.
 | Zelle | Bezeichnung | Pflicht |
 |---|---|---|
 | **510** | Chronologische Segmentanalyse (10 Teile) | MUST |
+| **512** | Normierte Motiv-Häufigkeiten (pro 1.000 Wörter) | empfohlen |
 | **515** | Test: Häufigste Wörter im ersten Segment | optional |
 | **516** | Test: Wort-Varianten-Suche | optional |
 | **520** | Narrative Kapitel-Segmentierung | empfohlen |
@@ -172,7 +179,7 @@ Muss immer zuerst ausgeführt werden. Kein manueller Eingriff nötig.
 | **560** | Kapitel-Visualisierung (Linienplot) | empfohlen |
 | **570** | Test: Trefferprüfung Segment | optional |
 
-**Was passiert hier:** Zelle 510 teilt den bereinigten Text in zehn gleich große Segmente und zählt pro Segment, wie oft jedes Motiv aus `themen_felder` vorkommt. Dabei wird eine **Hybrid-Suche** eingesetzt: Suchbegriffe ohne `!` werden exakt gesucht (findet nur `Geld`, nicht `Geldes`), Suchbegriffe mit `!` am Ende als Präfix-Suche (findet `glänzt`, `glänzend`, `Glänzen`). Zelle 520 segmentiert alternativ nach tatsächlichen Kapitel-Ankerpunkten im Text (z.B. „Erster Teil", „Zweiter Teil"). Zellen 515 und 516 stehen bewusst nach 510, weil sie `chronologie_ergebnisse` benötigen.
+**Was passiert hier:** Zelle 510 teilt den bereinigten Text in zehn gleich große Segmente und zählt pro Segment, wie oft jedes Motiv aus `themen_felder` vorkommt. Dabei wird eine **Hybrid-Suche** eingesetzt: Suchbegriffe ohne `!` werden exakt gesucht (findet nur `Geld`, nicht `Geldes`), Suchbegriffe mit `!` am Ende als Präfix-Suche (findet `glänzt`, `glänzend`, `Glänzen`). Zelle 520 segmentiert alternativ nach tatsächlichen Kapitel-Ankerpunkten im Text (z.B. „Erster Teil", „Zweiter Teil"). **Zelle 512** normiert alle Motiv-Häufigkeiten auf 1.000 Wörter (`Treffer / Segmentlänge × 1.000`) und verbindet dabei zwei Datenquellen: die gleichlangen Segmente aus Zelle 510 und die unterschiedlich langen Kapitel aus Zelle 520. Besonders bei der Kapitel-Segmentierung ist die Normierung unverzichtbar, da ein langes Kapitel automatisch mehr absolute Treffer erzeugt als ein kurzes. Zellen 515 und 516 stehen bewusst nach 510, weil sie `chronologie_ergebnisse` benötigen.
 
 ---
 
@@ -182,10 +189,11 @@ Muss immer zuerst ausgeführt werden. Kein manueller Eingriff nötig.
 |---|---|---|
 | **610** | KWIC-Analyse (Keyword in Context) | empfohlen |
 | **620** | Wortfeld-Konkordanz | empfohlen |
+| **625** | Kollokationsanalyse (PMI) | empfohlen |
 | **630** | Emotionale Trend-Analyse (Stimmungskurve) | empfohlen |
 | **640** | Sentiment-Kontrast: Glanz vs. Verfall | empfohlen |
 
-**Was passiert hier:** Zelle 610 sucht ein einzelnes Wort im Originaltext und zeigt es mit seinem unmittelbaren Kontext (Keyword in Context). Zelle 620 sucht nach einem gesamten Wortfeld und markiert jeden Fund kontextuell. Beide Ergebnisse werden als `.txt` in `02_Output/` exportiert und sind direkt in Hausarbeiten zitierbar. Zellen 630 und 640 berechnen Stimmungsindizes aus positiven und negativen Wortlisten und stellen den Verlauf über die Textsegmente grafisch dar.
+**Was passiert hier:** Zelle 610 sucht ein einzelnes Wort im Originaltext und zeigt es mit seinem unmittelbaren Kontext (Keyword in Context). Zelle 620 sucht nach einem gesamten Wortfeld und markiert jeden Fund kontextuell. Beide Ergebnisse werden als `.txt` in `02_Output/` exportiert und sind direkt in Hausarbeiten zitierbar. Zelle 625 berechnet **Kollokationen** via Pointwise Mutual Information (PMI): Welche Wörter stehen statistisch auffällig oft neben dem Suchwort – nicht nur häufig, sondern häufiger als der Zufall erwarten ließe? Das Ergebnis wird als Balkendiagramm und `.csv` exportiert. Zellen 630 und 640 berechnen Stimmungsindizes aus positiven und negativen Wortlisten.
 
 ---
 
@@ -284,6 +292,26 @@ themen_felder = {
 
 ---
 
+### Lemmatisierung aktivieren
+
+In **Zelle 340** wird `lemma_liste` erzeugt. Um sie in der Analyse zu verwenden, einfach in den gewünschten Folge-Zellen (410–640) `saubere_liste` durch `lemma_liste` ersetzen:
+
+```python
+# Beispiel in Zelle 410:
+zaehler_final = Counter(lemma_liste)   # statt Counter(saubere_liste)
+```
+
+### Kollokations-Suchwort und Fenster anpassen
+
+In **Zelle 625**:
+
+```python
+suchwort        = "Familie"   # ← beliebiges Wort
+fenster_breite  = 5           # ← Kontextfenster (Wörter links + rechts)
+min_haeufigkeit = 3           # ← Mindesthäufigkeit des Nachbarworts
+top_n           = 20          # ← Anzahl der angezeigten Kollokationen
+```
+
 ### Stoppwörter ergänzen
 
 In **Zelle 330**, die Liste `extra_stops` erweitern:
@@ -378,6 +406,12 @@ Alle Ausgabedateien landen automatisch in `02_Output/` des aktiven Projekts.
 | `KWIC_Suchwort_Projektname.txt` | Zelle 610 | Alle Keyword-in-Context-Fundstellen |
 | `Konkordanz_Feld_Thema_Projektname.txt` | Zelle 620 | Wortfeld-Konkordanz |
 | `Motiv_Statistik_Projektname_JJJJ-MM-TT_HH-MM.csv` | Zelle 720 | Motiv-Häufigkeiten pro Segment (Excel-kompatibel) |
+| `Z415_TTR_Projektname_JJJJMMTT_HHMM.png` | Zelle 415 | MATTR-Kurve (Lexikalische Diversität) |
+| `Z416_Zipf_Projektname_JJJJMMTT_HHMM.png` | Zelle 416 | Zipf-Kurve |
+| `Z512_Norm_Segmente_Projektname_JJJJMMTT_HHMM.png` | Zelle 512 | Normierter Motivverlauf (Segmente) |
+| `Z512_Norm_Kapitel_Projektname_JJJJMMTT_HHMM.png` | Zelle 512 | Normierter Motivverlauf (Kapitel) |
+| `Kollokation_Suchwort_Projektname.csv` | Zelle 625 | PMI-Kollokationstabelle |
+| `Z625_Kollokation_Suchwort_Projektname_JJJJMMTT_HHMM.png` | Zelle 625 | PMI-Balkendiagramm |
 | `AntConc_Bereinigt_Projektname.txt` | Zelle 710 | Bereinigter Text für AntConc |
 
 ---
@@ -478,6 +512,11 @@ Neue Zellen können zwischen bestehenden eingefügt werden, ohne die Nummerierun
 | 11 | **960** | Training: Typ-Konvertierung |
 | 4 | — | *(deprecated, entfernt)* |
 | *(neu)* | **100** | pip-Install & Requirements-Check |
+| *(neu)* | **340** | Lemmatisierung via spaCy |
+| *(neu)* | **415** | Type-Token-Ratio (TTR) |
+| *(neu)* | **416** | Zipf-Kurve |
+| *(neu)* | **512** | Normierte Motiv-Häufigkeiten |
+| *(neu)* | **625** | Kollokationsanalyse (PMI) |
 
 ---
 
